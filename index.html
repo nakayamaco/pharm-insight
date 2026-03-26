@@ -27,7 +27,7 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         .header {
-            padding: 20px;
+            padding: 15px 20px;
             background-color: #2c3e50;
             display: flex;
             justify-content: space-between;
@@ -35,7 +35,24 @@
             color: #fff;
         }
         .header-title { font-size: 18px; font-weight: bold; margin: 0; }
-        .progress { color: #bdc3c7; font-size: 14px; }
+        
+        .nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .nav-btn {
+            background-color: #34495e;
+            border: 1px solid #7f8c8d;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .progress { color: #bdc3c7; font-size: 14px; min-width: 80px; text-align: center; }
         
         .content {
             flex: 1;
@@ -1015,7 +1032,7 @@
                 bad_end: "見逃すと… 代謝性アシドーシスが進行し、意識障害や昏睡に至る危険がある。",
                 good_end: "介入すると… 重篤な合併症を未然に防ぎ、体調回復後の安全な治療再開に繋がる。"
             },
-                {
+            {
                 id: 40,
                 title: "メルカゾール開始初期のモニタリング",
                 difficulty: "⭐⭐⭐",
@@ -1084,7 +1101,7 @@
                 bad_end: "見逃すと… 軽微な衝撃で椎体骨折（いつの間にか骨折）を起こし、ADLが低下する。",
                 good_end: "介入すると… ステロイド治療を継続しながら骨折リスクを最小限に抑えることができる。"
             },
-                {
+            {
                 id: 43,
                 title: "インスリン効果不十分の原因究明",
                 difficulty: "⭐⭐",
@@ -1176,7 +1193,7 @@
                 bad_end: "見逃すと… 脳浮腫から痙攣、意識障害、最悪の場合は死に至る。",
                 good_end: "介入すると… 適切な水分管理と用量調整により、電解質バランスを正常に維持できる。"
             },
-        {
+            {
                 id: 47,
                 title: "腎保護目的の薬剤選択とモニタリング",
                 difficulty: "⭐⭐",
@@ -2388,28 +2405,61 @@
 
             const currentCase = cases[currentCaseIndex];
 
+            // ステップを進める
             const handleNextStep = () => {
                 if (step < 3) setStep(step + 1);
             };
 
+            // 回答を選択
             const handleAnswer = (index) => {
                 setSelectedOption(index);
             };
 
-            const resetCase = () => {
+            // 次の症例へ（リセット含む）
+            const resetAndGoNext = () => {
                 setStep(1);
                 setSelectedOption(null);
                 setCurrentCaseIndex((currentCaseIndex + 1) % cases.length);
             };
 
+            // 直接指定したインデックスに移動
+            const navigateTo = (index) => {
+                if (index >= 0 && index < cases.length) {
+                    setStep(1);
+                    setSelectedOption(null);
+                    setCurrentCaseIndex(index);
+                }
+            };
+
             return (
                 <div style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
                     <div className="header">
-                        <h1 className="header-title">Pharm-Insight v1.0</h1>
-                        <span className="progress">症例 {currentCase.id} / 100</span>
+                        <h1 className="header-title">Pharm-Insight</h1>
+                        <div className="nav-controls">
+                            <button 
+                                className="nav-btn" 
+                                onClick={() => navigateTo(currentCaseIndex - 1)}
+                                disabled={currentCaseIndex === 0}
+                            >
+                                ◀ 前
+                            </button>
+                            <span className="progress">{currentCaseIndex + 1} / {cases.length}</span>
+                            <button 
+                                className="nav-btn" 
+                                onClick={() => navigateTo(currentCaseIndex + 1)}
+                                disabled={currentCaseIndex === cases.length - 1}
+                            >
+                                次 ▶
+                            </button>
+                        </div>
                     </div>
 
                     <div className="content">
+                        {/* タイトル表示 */}
+                        <div style={{marginBottom: '10px', fontSize: '14px', fontWeight: 'bold', color: '#34495e'}}>
+                            テーマ: {currentCase.title}
+                        </div>
+
                         {/* Step 1: 処方提示 */}
                         <div className="card">
                             <span className="label">【処方内容】難易度:{currentCase.difficulty}</span>
@@ -2473,11 +2523,15 @@
                                 disabled={step === 2 && selectedOption === null}
                                 onClick={handleNextStep}
                             >
-                                {step === 1 ? "状況を確認する" : "結果を見る"}
+                                {step === 1 ? "患者の状況を確認する" : "結果を見る"}
                             </button>
                         ) : (
-                            <button className="next-button" onClick={resetCase}>
-                                次の症例へ
+                            <button 
+                                className="next-button" 
+                                onClick={resetAndGoNext}
+                                disabled={currentCaseIndex === cases.length - 1}
+                            >
+                                {currentCaseIndex === cases.length - 1 ? "全症例 終了" : "次の症例へ"}
                             </button>
                         )}
                     </div>
