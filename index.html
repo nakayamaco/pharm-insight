@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharm-Insight v1.0</title>
+    <!-- React & Babel CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        /* React NativeのスタイルをCSSに再現 */
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f4f7;
+            display: flex;
+            justify-content: center;
+        }
+        #root {
+            width: 100%;
+            max-width: 500px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f0f4f7;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            padding: 20px;
+            background-color: #2c3e50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fff;
+        }
+        .header-title { font-size: 18px; font-weight: bold; margin: 0; }
+        .progress { color: #bdc3c7; font-size: 14px; }
+        
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .card {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .info-card { border-left: 5px solid #3498db; }
+        
+        .label { font-size: 12px; font-weight: bold; color: #7f8c8d; margin-bottom: 5px; display: block; }
+        .med-text { font-size: 16px; color: #2c3e50; margin: 3px 0; display: block; }
+        .s-text { font-size: 16px; font-style: italic; margin-bottom: 10px; display: block; }
+        .o-text { font-size: 16px; color: #e67e22; font-weight: bold; display: block; white-space: pre-wrap; }
+        
+        .question-text { font-size: 18px; font-weight: bold; margin-bottom: 15px; display: block; }
+        
+        .option-button {
+            width: 100%;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dcdde1;
+            background-color: #fff;
+            margin-bottom: 10px;
+            text-align: left;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .option-button:hover { background-color: #f9f9f9; }
+        .selected-option { background-color: #d1e9ff !important; border-color: #3498db; }
+        
+        .result-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+        .correct-card { border-left: 8px solid #27ae60; }
+        .wrong-card { border-left: 8px solid #e74c3c; }
+        
+        .soap-text { font-size: 15px; margin-bottom: 10px; line-height: 1.5; color: #2c3e50; }
+        
+        .outcome-card {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            border-top: 3px solid #f1c40f;
+            margin-bottom: 20px;
+        }
+        .bad-end-title { color: #e74c3c; font-weight: bold; margin-bottom: 5px; display: block; }
+        .good-end-title { color: #27ae60; font-weight: bold; margin-top: 15px; margin-bottom: 5px; display: block; }
+        .outcome-text { font-size: 14px; color: #34495e; }
+        
+        .footer {
+            padding: 15px;
+            background-color: #fff;
+            border-top: 1px solid #ddd;
+        }
+        .next-button {
+            width: 100%;
+            background-color: #3498db;
+            color: #fff;
+            padding: 18px;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .next-button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        .next-button:active { background-color: #2980b9; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        const cases = [
+            {
+                id: 1,
+                title: "心不全・腎機能低下：微細な変化の察知",
+                difficulty: "⭐⭐",
+                prescription: ["エンレスト100mg", "フォシーガ10mg", "スピロノラクトン25mg", "ビソプロロール2.5mg", "ラシックス20mg"],
+                so_info: {
+                    s: "「少し動くと息切れがする。靴が少しきついんだよね」",
+                    o: "体重：前回 62.5kg → 今回 64.0kg (+1.5kg)\neGFR：42 (前回 48)"
+                },
+                question: "この状況で、最も優先すべきアセスメント（警戒すべき点）は？",
+                options: [
+                    "SGLT2阻害薬による尿路感染症",
+                    "薬剤性腎障害（AKI）の疑い",
+                    "心不全の増悪（うっ血の初期兆候）"
+                ],
+                answerIndex: 2,
+                soap_example: {
+                    a: "体重増と浮腫、息切れから心不全の増悪（うっ血）の可能性が高い。腎機能低下は心拍出量低下に伴う腎血流不足と推測。",
+                    p: "医師へ：体重増とうっ血疑いを報告。利尿剤の調整を検討依頼。患者へ：塩分制限の再確認と毎朝の体重測定を徹底指導。"
+                },
+                bad_end: "見逃すと… 1週間後に肺水腫で緊急搬送。入院管理が必要になる。",
+                good_end: "介入すると… 早期の利尿剤調整により入院を回避。在宅生活を維持できる。"
+            },
+            {
+                id: 2,
+                title: "CKD・Triple Whammyの回避",
+                difficulty: "⭐⭐⭐",
+                prescription: ["ロサルタン25mg", "フロセミド20mg", "ロキソプロフェン60mg", "レバミピド100mg", "アトルバスタチン10mg"],
+                so_info: {
+                    s: "「腰を痛めて整形でもらったロキソニンを飲み始めてから、なんだか体が重い」",
+                    o: "BP: 152/94 (前回 130/80)\neGFR: 35 (前回 50)"
+                },
+                question: "この処方の組み合わせで最も懸念されるリスクは？",
+                options: [
+                    "スタチンによる横紋筋融解症",
+                    "Triple Whammyによる急性腎不全",
+                    "NSAIDsによる胃潰瘍"
+                ],
+                answerIndex: 1,
+                soap_example: {
+                    a: "ARB+利尿剤にNSAIDsが加わったことで腎血流が急激に低下。血圧上昇とeGFR低下が顕著。",
+                    p: "医師へ：NSAIDsの中止またはアセトアミノフェンへの変更を提案。血圧と尿量のモニタリングを強化。"
+                },
+                bad_end: "見逃すと… 急性腎不全（AKI）により透析導入のリスクが高まる。",
+                good_end: "介入すると… 腎機能が回復し、適切な痛み管理と降圧管理が両立できる。"
+            },
+            {
+                id: 3,
+                title: "心不全・β遮断薬導入の落とし穴",
+                difficulty: "⭐⭐⭐",
+                prescription: ["エンレスト100mg", "ビソプロロール0.625mg", "フォシーガ10mg", "スピロノラクトン25mg", "ラシックス20mg"],
+                so_info: {
+                s: "「新しい心臓の薬（ビソプロロール）が増えてから、なんだか体がだるくて、階段がいつもより辛い」",
+                o: "HR: 52 (前回 74), BP: 98/60。浮腫(-)。"
+                },
+                question: "この状況で薬剤師がまず確認すべきことは？",
+                options: [
+                    "心不全の急性増悪",
+                    "β遮断薬による徐脈と心拍出量低下",
+                    "SGLT2阻害薬による脱水"
+                ],
+                answerIndex: 1,
+                soap_example: {
+                    a: "心不全に対するビソプロロール導入直後の徐脈。収縮力が維持できていない可能性。心拍数低下による心拍出量不足が倦怠感の原因か。",
+                    p: "医師へ：徐脈（HR52）と倦怠感を報告。ビソプロロールの増量中止、または減量の検討を提案。バイタル推移を注視。"
+                },
+                bad_end: "見逃すと… 心不全の悪化を招き、再入院が必要になる恐れがある。",
+                good_end: "介入すると… 患者の自覚症状に合わせた適切な用量調節が行われ、長期的な予後改善に繋がる。"
+            },
+            {
+                id: 4,
+                title: "ポリファーマシーとふらつき",
+                difficulty: "⭐⭐",
+                prescription: ["アムロジピン5mg", "ドネペジル5mg", "エチゾラム0.5mg", "酸化マグネシウム330mg", "ロゼレム8mg"],
+                so_info: {
+                    s: "「夜中にトイレに起きたとき、ふらついて転びそうになった。最近ずっと眠気が残る」",
+                    o: "転倒歴：1週間前に1回。日中の傾眠傾向あり。"
+                },
+                question: "ふらつきの原因として最も可能性が高い薬剤は？",
+                options: [
+                    "アムロジピンによる低血圧",
+                    "エチゾラムの筋弛緩・持ち越し効果",
+                    "ドネペジルの副作用"
+                ],
+                answerIndex: 1,
+                soap_example: {
+                    a: "高齢者におけるベンゾジアゼピン系（エチゾラム）の感受性増大。筋弛緩作用による転倒リスクが極めて高い状態。Beers Criteriaでも推奨されない薬剤。",
+                    p: "医師へ：転倒リスクを報告。エチゾラムの漸減・中止、または非ベンゾ系（レンボレキサント等）への切り替えを提案。"
+                },
+                bad_end: "見逃すと… 大腿骨頸部骨折を起こし、寝たきりになるリスクがある。",
+                good_end: "介入すると… 転倒リスクが軽減され、日中の活動性が向上する。"
+            },
+            {
+                id: 5,
+                title: "尿酸降下薬の開始タイミング",
+                difficulty: "⭐⭐",
+                prescription: ["フェブキソスタット10mg", "ナイキサン100mg", "ムコスタ100mg", "アムロジピン5mg", "オルメサルタン20mg"],
+                so_info: {
+                    s: "「3日前に足の親指が腫れて激痛があった。今日受診してこの尿酸の薬をもらった」",
+                    o: "UA: 9.2。患部の赤れ・腫脹が残っている。"
+                },
+                question: "フェブキソスタットを開始するにあたっての注意点は？",
+                options: [
+                    "すぐに最大量まで増量する",
+                    "発作の極期が過ぎてから開始する",
+                    "痛みが消えるまでナイキサンだけで様子を見る"
+                ],
+                answerIndex: 1,
+                soap_example: {
+                    a: "痛風発作直後の尿酸降下薬開始は、血中尿酸値の急激な変動により発作を遷延・増悪させる恐れがある。",
+                    p: "患者へ：発作が完全に治まってから服用開始するよう指導。医師へ：開始時期の再確認。少量からの開始であることは妥当と判断。"
+                },
+                bad_end: "見逃すと… 痛風発作がさらに激化し、治療へのコンプライアンスが低下する。",
+                good_end: "介入すると… 発作を再発させることなく、安全に尿酸値をコントロールできる。"
+            },
+                {
+                id: 6,
+                title: "吸入手技と副作用マネジメント",
+                difficulty: "⭐⭐",
+                prescription: ["レルベア100エリプタ", "スピリーバレスピマット", "ムコダイン500mg", "テオフィリン200mg", "メプチンエアー"],
+                so_info: {
+                    s: "「最近、声が枯れて出しにくい。風邪かな？」",
+                    o: "口腔内：軽度の白斑あり。うがいの励行状況を確認したところ「軽く1回している」とのこと。"
+                },
+                question: "嗄声（声枯れ）の原因と対策は？",
+                options: [
+                    "テオフィリンによる粘膜乾燥",
+                    "吸入ステロイドによる口腔内カンジダ・筋無力",
+                    "スピリーバの副作用"
+                ],
+                answerIndex: 1,
+                soap_example: {
+                    a: "レルベア（ICS）による局所副作用。うがいの不十分さが原因。口腔内カンジダ症の初期症状の可能性あり。",
+                    p: "患者へ：ガラガラうがい・ブクブクうがいの徹底を指導。スペーサー利用や、吸入直後の食事を提案。改善しなければ医師に報告。"
+                },
+                bad_end: "見逃すと… 症状が悪化し、吸入治療を自己中断してしまう。",
+                good_end: "介入すると… 副作用が消失し、喘息・COPDのコントロールが維持される。"
+            },
+            {
+                id: 7,
+                title: "糖尿病患者のシックデイ・ルール",
+                difficulty: "⭐⭐⭐",
+                prescription: ["ジャヌビア50mg", "メトグルコ500mg", "カナグル100mg", "グリメピリド1mg", "アトルバスタチン10mg"],
+                so_info: {
+                    s: "「昨日から下痢と発熱があり、食事が全く摂れていない。薬はどうしたらいい？」",
+                    o: "顔色不良、軽度の脱水症状あり。"
+                },
+                question: "この状況で直ちに休薬を検討すべき薬剤の組み合わせは？",
+                options: [
+                    "ジャヌビアとアトルバスタチン",
+                    "メトグルコとカナグル（SGLT2i）",
+                    "全ての薬剤を通常通り服用"
+                ],
+                answerIndex: 1,
+                soap_example: {
+                    a: "シックデイ状態。メトホルミンによる乳酸アシドーシスリスク、SGLT2iによる脱水・正常血糖ケトアシドーシスのリスクが高い。",
+                    p: "医師へ：シックデイにつきメトグルコ・カナグルの休薬を提案。受診を勧奨。水分摂取を指示。"
+                },
+                bad_end: "見逃すと… 重篤な乳酸アシドーシスや脱水による腎不全を引き起こす。",
+                good_end: "介入すると… 急性増悪を防ぎ、体調回復後に安全に治療再開できる。"
+            },
+            {
+                id: 8,
+                title: "PD薬の血中濃度と効果の減弱",
+                difficulty: "⭐⭐⭐",
+                prescription: ["メネシット100mg 1日3回", "スタレボ100mg 1日1回", "ミラペックスLA1.5mg", "アザレクト1mg"],
+                so_info: {
+                    s: "「次の薬を飲む1時間くらい前になると、急に体が動かなくなる」",
+                    o: "服用記録：指示通り服用。食事内容：変化なし。"
+                },
+                question: "この現象（ウェアリングオフ）に対する適切な処方提案は？",
+                options: [
+                    "メネシットを1回1錠から2錠に増量する",
+                    "メネシットの服用回数を増やし（1日4〜5回）、分割する",
+                    "全ての薬を食直後に変更する"
+                ],
+                answerIndex: 1,
+                soap_example: {
+                    a: "レボドパの有効血中濃度が維持できなくなっている（ウェアリングオフ）。1回量増量より、分割回数の増加が血中濃度の安定に寄与する。",
+                    p: "医師へ：オフ時間の出現を報告。レボドパの分割服用（1日4回等への変更）や、COMT阻害薬の増量を提案。"
+                },
+                bad_end: "見逃すと… 日中のADLが著しく低下し、転倒やQOLの悪化を招く。",
+                good_end: "介入すると… 1日のうち「動ける時間」が長くなり、自立した生活が維持できる。"
+            },
+            {
+                id: 9,
+                title: "抗凝固療法中のマイナートラブル",
+                difficulty: "⭐⭐",
+                prescription: ["リクシアナ30mg", "ビソプロロール2.5mg", "バイアスピリン100mg", "タケキャブ10mg", "リピトール10mg"],
+                so_info: {
+                    s: "「最近、歯茎から血が出やすかったり、ぶつけていないのに青あざができたりする」",
+                    o: "腕に数箇所の紫斑あり。血圧は安定。"
+                },
+                question: "抗凝固薬服用中の患者への最も重要な指導は？",
+                options: [
+                    "納豆を控えるように言う",
+                    "出血が止まらない時や、激しい頭痛時の即時受診",
+                    "あざができたらリクシアナを1日おきにする"
+                ],
+                answerIndex: 1,
+                soap_example: {
+                    a: "リクシアナとバイアスピリンの併用による出血傾向。紫斑はマイナーグラウンディングだが、重大な出血（消化管・頭蓋内）の前兆の可能性も否定できない。",
+                    p: "患者へ：出血時の対処法を再指導。医師へ：紫斑の出現を報告し、抗血小板薬（バイアスピリン）継続の必要性を確認。"
+                },
+                bad_end: "見逃すと… 脳出血や消化管大量出血を見逃し、致命的になる恐れがある。",
+                good_end: "介入すると… 出血リスクを最小限に抑えつつ、血栓症を予防できる。"
+            },
+            {
+                id: 10,
+                title: "ビスホスホネートと歯科連携",
+                difficulty: "⭐⭐",
+                prescription: ["フォサマック35mg（週1回）", "エディロール0.75μg", "デパス0.5mg", "ノルバスク5mg", "ディオバン80mg"],
+                so_info: {
+                    s: "「来週から歯医者で抜歯をすることになった。特に伝えることはないよね？」",
+                    o: "BP製剤を3年以上継続中。"
+                },
+                question: "この状況で薬剤師がとるべき行動は？",
+                options: [
+                    "「お大事に」と伝え、そのまま送り出す",
+                    "歯科医師へBP製剤の服用期間・情報を手紙等で提供する",
+                    "抜歯が終わるまで自己判断で休薬させる"
+                ],
+                answerIndex: 1,
+                soap_example: {
+                    a: "長期BP製剤服用による抜歯後の顎骨壊死（BRONJ）リスク。休薬の是非は議論があるが、歯科との情報共有は必須。",
+                    p: "歯科医師へ：服用薬剤と期間を情報提供。医師へ：歯科治療の予定を報告。患者へ：口腔ケアの重要性を指導。"
+                },
+                bad_end: "見逃すと… 難治性の顎骨壊死を発症し、長期の苦痛を強いることになる。",
+                good_end: "介入すると… 医科歯科連携により、適切な周術期管理が行われ安全に抜歯できる。"
+            },
+            {
+                id: 11,
+                title: "相互作用による吸収低下",
+                difficulty: "⭐⭐",
+                prescription: ["フェルム100mg", "シプロフロキサシン200mg", "酸化マグネシウム330mg", "ムコスタ100mg", "セレコックス100mg"],
+                so_info: {
+                    s: "「貧血の薬を飲み始めたけど、全然数値が上がらない。感染症の薬も飲んでいる」",
+                    o: "Hb: 9.2 (目標12以上)。併用薬にニューキノロン系あり。"
+                },
+                question: "フェルムの吸収を妨げている可能性がある組み合わせは？",
+                options: [
+                    "フェルムとムコスタ",
+                    "フェルムとシプロフロキサシン・酸化Mg",
+                    "フェルムとセレコックス"
+                ],
+                answerIndex: 1,
+                soap_example: {
+                    a: "鉄剤とニューキノロン、およびマグネシウムとのキレート形成による吸収低下。相互に効果を減弱させている。",
+                    p: "患者へ：服用時間を2時間以上空けるよう指導。医師へ：配合変化を考慮した服用時間の指定を提案。"
+                },
+                bad_end: "見逃すと… 貧血も感染症も治らず、治療期間が不必要に延長する。",
+                good_end: "介入すると… 各薬剤の吸収が最適化され、速やかな症状改善が見込める。"
+            },
+            {
+                id: 12,
+                title: "市販薬との飲み合わせ",
+                difficulty: "⭐⭐⭐",
+                prescription: ["タムスロシン0.2mg", "デュタステリド0.5mg", "アムロジピン5mg", "リピトール10mg", "ネキシウム20mg"],
+                so_info: {
+                    s: "「風邪気味で市販の鼻炎薬を飲んだら、尿が全く出なくなって苦しい」",
+                    o: "下腹部の膨満感あり。市販薬の成分：クロルフェニラミン含有。"
+                },
+                question: "この症状の原因として考えられるのは？",
+                options: [
+                    "前立腺肥大の急激な進行",
+                    "抗ヒスタミン薬の抗コリン作用による急性尿閉",
+                    "タムスロシンの効果消失"
+                ],
+                answerIndex: 1,
+                soap_example: {
+                    a: "前立腺肥大患者における抗コリン薬（鼻炎薬）服用による尿閉。排尿筋の収縮抑制が原因。",
+                    p: "至急受診（泌尿器科）を勧奨。市販薬の服用中止を指示。お薬手帳への禁忌事項の記載。"
+                },
+                bad_end: "見逃すと… 腎後性腎不全に至る危険がある。",
+                good_end: "介入すると… 重篤な合併症を防ぎ、今後の市販薬選択の安全性が確保される。"
+            },
+        ];
+
+        function App() {
+            const [currentCaseIndex, setCurrentCaseIndex] = useState(0);
+            const [step, setStep] = useState(1); // 1: 処方, 2: クイズ, 3: 結果
+            const [selectedOption, setSelectedOption] = useState(null);
+
+            const currentCase = cases[currentCaseIndex];
+
+            const handleNextStep = () => {
+                if (step < 3) setStep(step + 1);
+            };
+
+            const handleAnswer = (index) => {
+                setSelectedOption(index);
+            };
+
+            const resetCase = () => {
+                setStep(1);
+                setSelectedOption(null);
+                setCurrentCaseIndex((currentCaseIndex + 1) % cases.length);
+            };
+
+            return (
+                <div style={{display: 'flex', flexDirection: 'column', height: '100%'}}>
+                    <div className="header">
+                        <h1 className="header-title">Pharm-Insight v1.0</h1>
+                        <span className="progress">症例 {currentCase.id} / 100</span>
+                    </div>
+
+                    <div className="content">
+                        {/* Step 1: 処方提示 */}
+                        <div className="card">
+                            <span className="label">【処方内容】難易度:{currentCase.difficulty}</span>
+                            {currentCase.prescription.map((med, i) => (
+                                <span key={i} className="med-text">・{med}</span>
+                            ))}
+                        </div>
+
+                        {/* Step 2以降: 患者情報 */}
+                        {step >= 2 && (
+                            <div className="card info-card">
+                                <span className="label">【患者の状態 (S/O)】</span>
+                                <span className="s-text">S: {currentCase.so_info.s}</span>
+                                <span className="o-text">O: {currentCase.so_info.o}</span>
+                            </div>
+                        )}
+
+                        {/* Step 2: クイズ */}
+                        {step === 2 && (
+                            <div className="card">
+                                <span className="question-text">{currentCase.question}</span>
+                                {currentCase.options.map((opt, i) => (
+                                    <button 
+                                        key={i} 
+                                        className={`option-button ${selectedOption === i ? 'selected-option' : ''}`}
+                                        onClick={() => handleAnswer(i)}
+                                    >
+                                        {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Step 3: 結果と解説 */}
+                        {step === 3 && (
+                            <div>
+                                <div className={`card ${selectedOption === currentCase.answerIndex ? 'correct-card' : 'wrong-card'}`}>
+                                    <div className="result-title">
+                                        {selectedOption === currentCase.answerIndex ? "✅ 正解！" : "❌ 不正解"}
+                                    </div>
+                                    <span className="label">薬学的アセスメント(A):</span>
+                                    <p className="soap-text">{currentCase.soap_example.a}</p>
+                                    <span className="label">介入プラン(P):</span>
+                                    <p className="soap-text">{currentCase.soap_example.p}</p>
+                                </div>
+
+                                <div className="outcome-card">
+                                    <span className="bad-end-title">⚠️ 見逃した場合のアウトカム</span>
+                                    <p className="outcome-text">{currentCase.bad_end}</p>
+                                    <span className="good-end-title">✨ 介入した場合のアウトカム</span>
+                                    <p className="outcome-text">{currentCase.good_end}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="footer">
+                        {step < 3 ? (
+                            <button 
+                                className="next-button" 
+                                disabled={step === 2 && selectedOption === null}
+                                onClick={handleNextStep}
+                            >
+                                {step === 1 ? "状況を確認する" : "結果を見る"}
+                            </button>
+                        ) : (
+                            <button className="next-button" onClick={resetCase}>
+                                次の症例へ
+                            </button>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
